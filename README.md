@@ -22,6 +22,8 @@ Scenes → Blueprints → Import Blueprint** and paste the **raw** URL.
 ├── AGENTS.md                        # guidance for AI agents
 ├── LICENSE
 ├── README.md
+├── scripts/
+│   └── ha_install.py                # install into Home Assistant (uv)
 └── blueprints/
     ├── lighting/
     │   ├── motion_light_multisensor.yaml
@@ -296,6 +298,30 @@ default of `0°` means the ramp tracks actual daylight; set it to **−6** to st
 brightening during civil twilight.
 
 ---
+
+## Install via script
+
+`scripts/ha_install.py` pushes the blueprints in your local checkout (and dashboards in
+`dashboards/`, if any) straight into Home Assistant. It needs [uv](https://docs.astral.sh/uv/)
+and a long-lived access token of an admin user (**Profile → Security**).
+
+```bash
+scripts/ha_install.py                   # blueprints + dashboards
+scripts/ha_install.py blueprints        # only blueprints
+scripts/ha_install.py dashboards home-overview.yaml
+scripts/ha_install.py --dry-run         # show what would change
+scripts/ha_install.py --reconfigure     # enter URL / token again
+```
+
+On first run it asks for the URL and token and stores them in `scripts/.ha-install.env`
+(mode 600, gitignored). Blueprints are saved with the same `source_url` as a badge import,
+so existing imports are updated in place; affected automations are reloaded afterwards.
+
+Dashboards are storage-mode dashboards: `dashboards/<url-path>.yaml` (the name must contain a
+hyphen) holds the dashboard config, with an optional top-level `x-meta:` block
+(`title`, `icon`, `show_in_sidebar`, `require_admin`) used when creating it. The repo
+version replaces the whole dashboard; when the live config differs, the script shows a
+diff and asks before overwriting (`--yes` skips the question).
 
 ## Optional: update notifications
 
