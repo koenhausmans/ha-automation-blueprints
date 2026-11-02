@@ -3,19 +3,17 @@
 A set of Home Assistant automation blueprints. The two lighting blueprints share the same
 sun-elevation–based brightness engine (sine curve, separate morning/evening minimums,
 optional auto-scaling to today's peak sun); the appliance notifier and airco heating
-schedule are standalone:
+schedule are standalone.
 
-1. **Motion Light (multi-sensor)** — motion-activated lights for multiple sensors per
-   room, with a cancellable off-delay, periodic brightness refresh while occupied, and
-   optional manual-override protection.
-2. **Switch Light + Scenes** — the same kind of lights driven by a physical button
-   (Shelly) or dimmer (Philips Hue / Zigbee2MQTT): single press toggles, double / triple
-   press cycle through scenes, and the Hue up / down keys step brightness.
-3. **Appliance done notifier** — watches a power sensor and sends a repeating,
-   acknowledgeable notification when a washing machine (or dishwasher / dryer) finishes
-   its cycle.
-4. **Airco heating schedule** — weekly comfort heating with an airco from a Schedule
-   helper, with optional presence-based extra heating.
+| Blueprint | What it does | Import |
+|---|---|---|
+| [Motion Light (multi-sensor)](blueprints/lighting/motion_light_multisensor.yaml) | Motion-activated lights for multiple sensors per room, with a cancellable off-delay, periodic brightness refresh while occupied, and optional manual-override protection | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Flighting%2Fmotion_light_multisensor.yaml) [raw](https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/lighting/motion_light_multisensor.yaml) |
+| [Switch Light + Scenes](blueprints/lighting/switch_light_scenes.yaml) | Lights driven by a Shelly button or Hue / Zigbee2MQTT dimmer: single press toggles, double / triple press cycle scenes, Hue up / down step brightness | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Flighting%2Fswitch_light_scenes.yaml) [raw](https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/lighting/switch_light_scenes.yaml) |
+| [Appliance done notifier](blueprints/appliances/washing_machine_done_notifier.yaml) | Repeating, acknowledgeable notification when a washing machine, dishwasher or dryer finishes, based on a power sensor | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Fappliances%2Fwashing_machine_done_notifier.yaml) [raw](https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/appliances/washing_machine_done_notifier.yaml) |
+| [Airco heating schedule](blueprints/climate/airco_heating_schedule.yaml) | Weekly comfort heating with an airco from a Schedule helper, with optional presence-based extra heating | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Fclimate%2Fairco_heating_schedule.yaml) [raw](https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/climate/airco_heating_schedule.yaml) |
+
+Click a badge for one-click import. To import manually, go to **Settings → Automations &
+Scenes → Blueprints → Import Blueprint** and paste the **raw** URL.
 
 ## Repository layout
 
@@ -43,24 +41,13 @@ The repository lives at
 
 ---
 
-## Blueprint 1 — Motion Light (multi-sensor)
+## Motion Light (multi-sensor)
 
 Turns light(s) ON when ANY selected motion sensor detects motion, and OFF (with a 1s
 fade) only once ALL of them have been clear for an optional delay. New motion cancels the
 pending off. While occupied, brightness is refreshed on a timer — but only on lights that
 are already on, and (with the optional helper) both timer refreshes and motion
 re-triggers leave lights you haven't manually changed alone.
-
-### Install (one-click import)
-
-[![Open your Home Assistant instance and show the blueprint import dialog.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Flighting%2Fmotion_light_multisensor.yaml)
-
-Or manually: **Settings → Automations & Scenes → Blueprints → Import Blueprint**, and
-paste this raw URL:
-
-```
-https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/lighting/motion_light_multisensor.yaml
-```
 
 ### Requirements
 
@@ -69,7 +56,7 @@ https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/b
 
 ---
 
-## Blueprint 2 — Switch Light + Scenes
+## Switch Light + Scenes
 
 Drives the same lights from a physical button instead of motion. Two hardware families
 are supported, and you can use either or both (leave the other device empty):
@@ -110,16 +97,6 @@ Whenever the lights are turned **off** (Shelly toggle-off or Hue `off_press`), t
   Single-channel Shellys are usually `button1`; some report `button`. Set the input to
   match what your device exposes.
 
-### Install (one-click import)
-
-[![Open your Home Assistant instance and show the blueprint import dialog.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Flighting%2Fswitch_light_scenes.yaml)
-
-Or manually paste this raw URL into the Import Blueprint dialog:
-
-```
-https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/lighting/switch_light_scenes.yaml
-```
-
 ### Requirements
 
 - A `sun.sun` entity (default in HA).
@@ -138,7 +115,7 @@ https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/b
 
 ---
 
-## Blueprint 3 — Appliance done notifier
+## Appliance done notifier
 
 Watches a power sensor in front of an appliance (washing machine, dishwasher, dryer) and
 notifies you when its cycle finishes. A cycle is detected only when the power first rises
@@ -168,16 +145,6 @@ cancelled and re-armed automatically (`mode: restart`).
   Companion app as the primary target.
 - Set the **running threshold** comfortably above the **idle threshold**.
 
-### Install (one-click import)
-
-[![Open your Home Assistant instance and show the blueprint import dialog.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Fappliances%2Fwashing_machine_done_notifier.yaml)
-
-Or manually paste this raw URL into the Import Blueprint dialog:
-
-```
-https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/appliances/washing_machine_done_notifier.yaml
-```
-
 ### Requirements
 
 - A power sensor for the appliance, ideally a **5-minute mean** statistics sensor.
@@ -190,7 +157,7 @@ https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/b
 
 ---
 
-## Blueprint 4 — Airco heating schedule
+## Airco heating schedule
 
 Heats with an airco on a weekly timetable kept in a Home Assistant **Schedule helper**.
 It was built for a Haier unit on the [hOn integration](https://github.com/gvigroux/hon),
@@ -264,16 +231,6 @@ period (180 s + 10 min by default). Shorten one of them to compensate.
 
 Phone-based presence is imperfect: a phone left at home, asleep or off Wi-Fi gives the
 wrong result.
-
-### Install (one-click import)
-
-[![Open your Home Assistant instance and show the blueprint import dialog.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Fclimate%2Fairco_heating_schedule.yaml)
-
-Or manually paste this raw URL into the Import Blueprint dialog:
-
-```
-https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/climate/airco_heating_schedule.yaml
-```
 
 ### Requirements
 
@@ -360,8 +317,8 @@ entities.
 > **Migration from previous URLs:** Home Assistant keys an imported blueprint by its
 > `source_url`. The repository is now `ha-automation-blueprints`, previously
 > `ha-smart-lighting-blueprints` and originally `ha-motion-light-multisensor`.
-> Blueprints have also moved from the repository root into `blueprints/lighting/`
-> and `blueprints/appliances/`. If you imported from either previous repository URL
+> Blueprints have also moved from the repository root into `blueprints/lighting/`,
+> `blueprints/appliances/` and `blueprints/climate/`. If you imported from either previous repository URL
 > or a root-level file in the current repository, importing from the links above is
 > treated as a *new* blueprint, not an update. Re-import each
 > affected blueprint once, point existing automations at the new copy, then remove
