@@ -4,16 +4,18 @@ Guidance for AI agents working in this repository.
 
 ## Project
 
-Three Home Assistant **automation blueprints**. There is no application code, no build
+Four Home Assistant **automation blueprints**. There is no application code, no build
 step, and no test framework — the deliverable is the YAML files plus their README. The two
-lighting blueprints share one sun-elevation–based brightness engine; the notifier is
-standalone.
+lighting blueprints share one sun-elevation–based brightness engine; the notifier and the
+airco heating schedule are standalone.
 
 - `blueprints/lighting/motion_light_multisensor.yaml` — multi-sensor motion lighting.
 - `blueprints/lighting/switch_light_scenes.yaml` — button/switch-driven lighting (Shelly + Hue/Z2M) with
   scene cycling.
 - `blueprints/appliances/washing_machine_done_notifier.yaml` — repeating, acknowledgeable "appliance done"
   notification driven by a power sensor (no sun engine).
+- `blueprints/climate/airco_heating_schedule.yaml` — weekly airco comfort heating from a
+  Schedule helper, with optional presence-based extra heating.
 
 ## Repository structure
 
@@ -25,12 +27,13 @@ standalone.
     ├── lighting/
     │   ├── motion_light_multisensor.yaml
     │   └── switch_light_scenes.yaml
-    └── appliances/
-        └── washing_machine_done_notifier.yaml
+    ├── appliances/
+    │   └── washing_machine_done_notifier.yaml
+    └── climate/
+        └── airco_heating_schedule.yaml
 ```
 
 Group blueprints by purpose under `blueprints/`, without an `automation/` level.
-Add `blueprints/climate/` when the planned airco blueprint is implemented.
 
 Do not add `hacs.json` or a `custom_components/` tree unless the task is explicitly
 to wrap this blueprint in a custom integration. HACS has **no blueprint category**,
@@ -50,9 +53,7 @@ through a pull request, mirroring the existing history (PRs #1, #2, …).
 3. **Commit** in the repo's style: an imperative subject line (`Add …`, `Fix …`), a body
    explaining *why* with bullets for the notable points, and a
    `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` trailer.
-4. **Keep scratch files out of commits.** `TODO.md` and similar local notes stay
-   untracked — do not add them to a PR.
-5. **Push and open a PR against `master`.** Merging is done via the GitHub PR (the history
+4. **Push and open a PR against `master`.** Merging is done via the GitHub PR (the history
    uses merge commits), not by pushing to `master` directly.
 
 ## Validating a change
@@ -187,6 +188,35 @@ reintroduces a real failure.
   Give each appliance a distinct tag if the blueprint is reused.
 - **No sun engine.** This blueprint shares none of the `target_brightness` /
   `target_color_temp` code; keep it that way.
+
+### `airco_heating_schedule.yaml`
+
+- **Start heating with `set_hvac_mode: heat`, then a separate `set_temperature`.** The
+  hOn integration ignores `hvac_mode` inside `set_temperature`, and `climate.turn_on`
+  resumes the previous mode instead of selecting heat. Stop with `set_hvac_mode: off`.
+- **Never touch non-heating modes.** If the airco is not `heat` or `off`, the automation
+  does nothing. Pause / season-off only switch the airco off when it is in `heat`.
+- **The schedule always wins; presence only adds heating.** Scheduled blocks heat
+  regardless of occupancy. Unknown/unavailable people never count as home.
+- **The setpoint is written only on a transition or when heating starts**
+  (`schedule_transition` or mode was not `heat`). This is what lets a manual adjustment
+  last until the next block. A schedule trigger is a transition only when on/off or the
+  `profile` attribute changed; adjoining blocks keep the schedule `on`.
+- **Setpoint precedence:** block `temperature` attribute → profile `input_number` helper
+  → blueprint input (presence: helper → input). Invalid values fall through. A change
+  in block `temperature` also counts as a transition. Helper changes are not triggers
+  on purpose: that would override manual adjustments.
+- **Manual off during a block is a known, deliberate gap.** It lasts only until the next
+  trigger (arrival, window time, restart, pause off, season on). Don't "fix" it without
+  agreement; the intended fix is to start heating only on start events.
+- **The departure grace lives in the `leave` trigger's `for:`** and is mirrored in
+  `someone_home` (left less than `grace_s` ago still counts as home), so other triggers
+  don't cut presence heating early.
+- **No retries, no redundant writes.** hOn is cloud-based and its state lags. Compare
+  mode/setpoint before writing; the next trigger re-applies the state.
+- **Never target Nest / CV.** Only the selected airco entity is written.
+- **`mode: queued`**, not `restart`: a restart could cut between the mode and
+  temperature calls.
 
 ## Home Assistant templating rules to respect
 

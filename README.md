@@ -2,7 +2,8 @@
 
 A set of Home Assistant automation blueprints. The two lighting blueprints share the same
 sun-elevation–based brightness engine (sine curve, separate morning/evening minimums,
-optional auto-scaling to today's peak sun); the third is a standalone appliance notifier:
+optional auto-scaling to today's peak sun); the appliance notifier and airco heating
+schedule are standalone:
 
 1. **Motion Light (multi-sensor)** — motion-activated lights for multiple sensors per
    room, with a cancellable off-delay, periodic brightness refresh while occupied, and
@@ -13,6 +14,8 @@ optional auto-scaling to today's peak sun); the third is a standalone appliance 
 3. **Appliance done notifier** — watches a power sensor and sends a repeating,
    acknowledgeable notification when a washing machine (or dishwasher / dryer) finishes
    its cycle.
+4. **Airco heating schedule** — weekly comfort heating with an airco from a Schedule
+   helper, with optional presence-based extra heating.
 
 ## Repository layout
 
@@ -25,13 +28,15 @@ optional auto-scaling to today's peak sun); the third is a standalone appliance 
     ├── lighting/
     │   ├── motion_light_multisensor.yaml
     │   └── switch_light_scenes.yaml
-    └── appliances/
-        └── washing_machine_done_notifier.yaml
+    ├── appliances/
+    │   └── washing_machine_done_notifier.yaml
+    └── climate/
+        └── airco_heating_schedule.yaml
 ```
 
 Blueprints are grouped by purpose, not by trigger: motion and switch control both
 belong under lighting. All current blueprints are automations, so there is no separate
-`automation/` level. Future airco control will go under `blueprints/climate/` when added.
+`automation/` level.
 
 The repository lives at
 [github.com/koenhausmans/ha-automation-blueprints](https://github.com/koenhausmans/ha-automation-blueprints).
@@ -182,6 +187,79 @@ https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/b
   Find it under **Developer Tools → Actions** by typing `notify.mobile_app` — pick the
   entry for your phone (e.g. `notify.mobile_app_pixel`).
 - *(Optional)* any additional `notify.*` services to mirror the message to.
+
+---
+
+## Blueprint 4 — Airco heating schedule
+
+Heats with an airco on a weekly timetable kept in a Home Assistant **Schedule helper**.
+It was built for a Haier unit on the [hOn integration](https://github.com/gvigroux/hon),
+but it uses only standard climate actions. Other heating such as Nest / CV is never touched.
+
+| Situation | Airco action |
+|---|---|
+| Scheduled block active | Heat at the block's setpoint, whether or not anyone is home |
+| No block, someone home, inside the presence window | Heat at the presence setpoint |
+| No block, everyone away beyond the grace period | Off |
+| No block, no presence configured | Off |
+| Airco in cool / dry / fan / auto mode | Left alone |
+| Pause on, or heating season off | Heating switched off, automation suspended |
+| Home Assistant restart | Current schedule and presence re-evaluated |
+
+- **Profiles.** Every schedule block needs additional data `profile: morning`,
+  `profile: daytime` or `profile: evening`. Morning and daytime blocks use the morning
+  setpoint; evening blocks use the evening setpoint. Adjoining blocks (e.g. Friday
+  morning → daytime → evening) keep heating on and change the setpoint at each boundary.
+  A block with an unknown profile is skipped and logged in the logbook.
+- **Setpoints.** A block can set its own `temperature: 21` in its additional data. Without
+  it, the profile setpoint is used: from the optional `input_number` helper if set, else
+  the blueprint value. The presence setpoint works the same way (helper, else blueprint
+  value). Changed setpoints apply at the next transition, not immediately.
+- **Manual changes.** A temperature you set by hand lasts until the next schedule
+  transition. The automation does not keep correcting it.
+- **Manual off.** Outside a block, turning the airco off by hand sticks. During a block,
+  it lasts only until the next trigger (someone arriving, the presence window time, a
+  restart, pause off or season on), which turns heating back on. This is a deliberate
+  choice for now and may be reconsidered.
+- **Presence only adds heating.** Unknown or unavailable people never count as home.
+  The grace period tolerates short Wi-Fi dropouts. Subtract any "consider home" delay
+  already set on the trackers so the delays don't stack.
+- **Commands.** Heating starts with `climate.set_hvac_mode: heat` followed by a separate
+  `climate.set_temperature`, and stops with `set_hvac_mode: off`. Writes are skipped when
+  the airco already has the target mode and setpoint. A failed cloud command is not
+  retried; the next trigger re-applies the state.
+
+### App-free presence with OpenWrt
+
+1. Add the **OpenWrt (LuCI)** integration for the router. It creates a device tracker
+   per Wi-Fi client.
+2. Give each phone a **fixed MAC address** on the home Wi-Fi. A fixed private address
+   is fine; a rotating one breaks tracking.
+3. Assign each phone's tracker to its owner's **person** entity and select the people in
+   the blueprint. Set up tracking with both occupants' consent.
+
+Phone-based presence is imperfect: a phone left at home or off Wi-Fi gives the wrong
+result.
+
+### Install (one-click import)
+
+[![Open your Home Assistant instance and show the blueprint import dialog.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Fclimate%2Fairco_heating_schedule.yaml)
+
+Or manually paste this raw URL into the Import Blueprint dialog:
+
+```
+https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/climate/airco_heating_schedule.yaml
+```
+
+### Requirements
+
+- An airco `climate.*` entity that supports the `heat` and `off` modes.
+- A **Schedule** helper (Settings → Devices & Services → Helpers → Schedule) with a
+  `profile` in each block's additional data.
+- *(Optional)* **person** entities with router-based trackers, for presence heating.
+- *(Optional)* an **`input_boolean`** pause toggle and an **`input_boolean`**
+  heating-season toggle.
+- *(Optional)* **`input_number`** helpers for the morning, evening and presence setpoints.
 
 ---
 

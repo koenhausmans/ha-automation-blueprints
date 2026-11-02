@@ -1,0 +1,364 @@
+# Airco heating schedule — weekly comfort heating with optional presence (HA automation blueprint)
+# Copyright (c) 2026 Koen Hausmans — MIT License
+# Source: https://github.com/koenhausmans/ha-automation-blueprints
+blueprint:
+  name: Airco heating – weekly schedule with optional presence
+  description: >
+    Heats with an airconditioner (built for the Haier hOn integration, but uses
+    only standard climate actions) on a weekly timetable kept in a Schedule
+    helper. Each schedule block carries a profile in its additional data
+    (`profile: morning`, `profile: daytime` or `profile: evening`); morning and
+    daytime blocks use the morning setpoint, evening blocks the evening setpoint.
+    A block can override this with its own `temperature`, and each setpoint can
+    come from an optional input_number helper.
+    Scheduled blocks always heat, whether or not anyone is home, so the room is
+    warm on arrival.
+
+    Presence is optional and only adds heating: when someone is home outside a
+    scheduled block (and within the optional time window), the airco heats at a
+    presence setpoint. It stops once everyone has been away for the grace
+    period. Unknown or unavailable presence never starts extra heating.
+
+    A manual temperature change lasts until the next schedule transition. The
+    automation never touches the airco while it is in a non-heating mode
+    (cool, dry, fan, auto). An optional pause toggle turns heating off and
+    suspends the automation; an optional heating-season toggle disables it
+    outside the season. Other heating (e.g. Nest / CV) is never touched.
+  domain: automation
+  source_url: https://github.com/koenhausmans/ha-automation-blueprints/blob/master/blueprints/climate/airco_heating_schedule.yaml
+  input:
+    climate_entity:
+      name: Airco
+      description: The airco climate entity. It must support the `heat` and `off` modes.
+      selector:
+        entity:
+          domain: climate
+
+    schedule_entity:
+      name: Heating schedule
+      description: >
+        A Schedule helper (Settings → Devices & Services → Helpers → Schedule).
+        Give every block additional data `profile: morning`, `profile: daytime`
+        or `profile: evening`. Adjoining blocks with different profiles are fine.
+        A block may also set `temperature: 21` to override its profile setpoint.
+      selector:
+        entity:
+          domain: schedule
+
+    morning_temp:
+      name: Morning setpoint
+      description: Target temperature for `morning` and `daytime` blocks.
+      default: 20
+      selector:
+        number:
+          min: 16
+          max: 30
+          step: 0.5
+          unit_of_measurement: °C
+          mode: box
+
+    evening_temp:
+      name: Evening setpoint
+      description: Target temperature for `evening` blocks.
+      default: 20.5
+      selector:
+        number:
+          min: 16
+          max: 30
+          step: 0.5
+          unit_of_measurement: °C
+          mode: box
+
+    morning_temp_helper:
+      name: Morning setpoint helper (optional)
+      description: >
+        An input_number that overrides the morning setpoint, so it can be changed
+        from a dashboard. Applied at the next schedule transition.
+      default: ""
+      selector:
+        entity:
+          domain: input_number
+
+    evening_temp_helper:
+      name: Evening setpoint helper (optional)
+      description: >
+        An input_number that overrides the evening setpoint. Applied at the next
+        schedule transition.
+      default: ""
+      selector:
+        entity:
+          domain: input_number
+
+    presence_entities:
+      name: People (optional)
+      description: >
+        Person entities whose presence extends heating outside scheduled blocks.
+        Someone counts as home when their person is `home`. Leave empty to
+        follow the schedule alone.
+      default: []
+      selector:
+        entity:
+          domain: person
+          multiple: true
+
+    presence_temp:
+      name: Presence setpoint
+      description: Target temperature when heating only because someone is home.
+      default: 19.5
+      selector:
+        number:
+          min: 16
+          max: 30
+          step: 0.5
+          unit_of_measurement: °C
+          mode: box
+
+    presence_temp_helper:
+      name: Presence setpoint helper (optional)
+      description: >
+        An input_number that overrides the presence setpoint. Applied when
+        presence heating starts.
+      default: ""
+      selector:
+        entity:
+          domain: input_number
+
+    away_grace:
+      name: Departure grace period
+      description: >
+        How long everyone must be away before presence heating stops. Tolerates
+        short Wi-Fi dropouts. Subtract any "consider home" delay already set on
+        the device trackers so delays don't stack.
+      default:
+        minutes: 10
+      selector:
+        duration: {}
+
+    presence_window_start:
+      name: Presence heating from
+      description: >
+        Presence heating is only allowed between this time and "Presence heating
+        until" (wraps past midnight). Set both to the same time to allow it all day.
+      default: "07:00:00"
+      selector:
+        time: {}
+
+    presence_window_end:
+      name: Presence heating until
+      default: "23:00:00"
+      selector:
+        time: {}
+
+    pause_helper:
+      name: Pause toggle (optional)
+      description: >
+        An input_boolean. Turning it on switches the airco off (if heating) and
+        suspends the automation; turning it off resumes and re-applies the
+        current schedule.
+      default: ""
+      selector:
+        entity:
+          domain: input_boolean
+
+    season_helper:
+      name: Heating season toggle (optional)
+      description: >
+        An input_boolean. While off, the automation does nothing; turning it off
+        switches the airco off if it is heating. Leave empty to always be in season.
+      default: ""
+      selector:
+        entity:
+          domain: input_boolean
+
+trigger_variables:
+  t_persons: !input presence_entities
+  t_pause: !input pause_helper
+  t_season: !input season_helper
+
+triggers:
+  - trigger: state
+    entity_id: !input schedule_entity
+    id: schedule
+  - trigger: template
+    value_template: >-
+      {{ expand(t_persons) | selectattr('state', 'eq', 'home') | list | count > 0 }}
+    id: arrive
+  - trigger: template
+    value_template: >-
+      {{ t_persons | count > 0 and
+         expand(t_persons) | selectattr('state', 'eq', 'home') | list | count == 0 }}
+    for: !input away_grace
+    id: leave
+  - trigger: time
+    at: !input presence_window_start
+    id: window
+  - trigger: time
+    at: !input presence_window_end
+    id: window
+  - trigger: template
+    value_template: "{{ t_pause != '' and is_state(t_pause, 'on') }}"
+    id: pause_on
+  - trigger: template
+    value_template: "{{ t_pause != '' and is_state(t_pause, 'off') }}"
+    id: pause_off
+  - trigger: template
+    value_template: "{{ t_season != '' and is_state(t_season, 'on') }}"
+    id: season_on
+  - trigger: template
+    value_template: "{{ t_season != '' and is_state(t_season, 'off') }}"
+    id: season_off
+  - trigger: homeassistant
+    event: start
+    id: start
+
+variables:
+  climate_entity: !input climate_entity
+  schedule_entity: !input schedule_entity
+  morning_temp: !input morning_temp
+  evening_temp: !input evening_temp
+  presence_entities: !input presence_entities
+  presence_temp: !input presence_temp
+  morning_temp_helper: !input morning_temp_helper
+  evening_temp_helper: !input evening_temp_helper
+  presence_temp_helper: !input presence_temp_helper
+  away_grace: !input away_grace
+  presence_window_start: !input presence_window_start
+  presence_window_end: !input presence_window_end
+  pause_helper: !input pause_helper
+  season_helper: !input season_helper
+
+conditions: []
+
+actions:
+  - variables:
+      mode_now: "{{ states(climate_entity) }}"
+      paused: "{{ pause_helper != '' and is_state(pause_helper, 'on') }}"
+      in_season: "{{ season_helper == '' or not is_state(season_helper, 'off') }}"
+      profile: "{{ state_attr(schedule_entity, 'profile') | default('', true) | string | lower }}"
+      grace_s: >-
+        {% if away_grace is mapping %}
+          {{ (away_grace.get('days', 0) | float(0)) * 86400
+             + (away_grace.get('hours', 0) | float(0)) * 3600
+             + (away_grace.get('minutes', 0) | float(0)) * 60
+             + (away_grace.get('seconds', 0) | float(0)) }}
+        {% else %}{{ 0 }}{% endif %}
+      # A schedule trigger counts as a transition only when on/off, the profile or the
+      # block temperature changed.
+      schedule_transition: >-
+        {{ trigger.id == 'schedule'
+           and trigger.from_state is not none and trigger.to_state is not none
+           and (trigger.from_state.state != trigger.to_state.state
+                or trigger.from_state.attributes.get('profile')
+                   != trigger.to_state.attributes.get('profile')
+                or trigger.from_state.attributes.get('temperature')
+                   != trigger.to_state.attributes.get('temperature')) }}
+  - variables:
+      # Someone is home, or left less than the grace period ago. Unknown/unavailable never counts.
+      someone_home: >-
+        {% set ns = namespace(home=false) %}
+        {% for p in expand(presence_entities) %}
+          {% if p.state == 'home' %}
+            {% set ns.home = true %}
+          {% elif p.state not in ['unknown', 'unavailable']
+                  and (now() - p.last_changed).total_seconds() < grace_s | float(0) %}
+            {% set ns.home = true %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.home }}
+      in_window: >-
+        {% set s = presence_window_start[:5] %}
+        {% set e = presence_window_end[:5] %}
+        {% set n = now().strftime('%H:%M') %}
+        {% if s == e %}true
+        {% elif s < e %}{{ s <= n < e }}
+        {% else %}{{ n >= s or n < e }}{% endif %}
+  - variables:
+      # target: heat / off / invalid / none (leave alone)
+      target: >-
+        {% if is_state(schedule_entity, 'on') %}
+          {{ 'heat' if profile in ['morning', 'daytime', 'evening'] else 'invalid' }}
+        {% elif someone_home and in_window %}heat
+        {% else %}off{% endif %}
+      # Precedence: block `temperature` → profile helper → blueprint input.
+      setpoint: >-
+        {% if is_state(schedule_entity, 'on') %}
+          {% set helper = evening_temp_helper if profile == 'evening' else morning_temp_helper %}
+          {% set fallback = (evening_temp if profile == 'evening' else morning_temp) | float %}
+          {% set fallback = states(helper) | float(fallback) if helper != '' else fallback %}
+          {{ state_attr(schedule_entity, 'temperature') | float(fallback) }}
+        {% else %}
+          {{ states(presence_temp_helper) | float(presence_temp | float)
+             if presence_temp_helper != '' else presence_temp | float }}
+        {% endif %}
+  - choose:
+      # Pausing or leaving the season switches heating off, but never touches other modes.
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ (trigger.id == 'pause_on' or trigger.id == 'season_off')
+                 and mode_now == 'heat' }}
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: "{{ climate_entity }}"
+            data:
+              hvac_mode: "off"
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ paused or not in_season or mode_now not in ['heat', 'off'] }}
+        sequence: []
+      - conditions:
+          - condition: template
+            value_template: "{{ target == 'invalid' }}"
+        sequence:
+          - action: logbook.log
+            data:
+              name: Airco heating schedule
+              message: >-
+                Ignored schedule block with unknown profile '{{ profile }}'
+                (expected morning, daytime or evening).
+              entity_id: "{{ schedule_entity }}"
+      # Deliberate, may be reconsidered: a manual off during a block only lasts
+      # until the next trigger (arrival, window time, restart, pause off, season
+      # on), which turns heating back on. To make it last until the next block,
+      # only start heating on start events (schedule transition, presence start).
+      - conditions:
+          - condition: template
+            value_template: "{{ target == 'heat' }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ mode_now != 'heat' }}"
+            then:
+              - action: climate.set_hvac_mode
+                target:
+                  entity_id: "{{ climate_entity }}"
+                data:
+                  hvac_mode: heat
+          # Only overwrite the setpoint on a transition or when heating starts,
+          # so a manual adjustment lasts until the next block.
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ (mode_now != 'heat' or schedule_transition)
+                     and state_attr(climate_entity, 'temperature') | float(-1)
+                         != setpoint | float }}
+            then:
+              - action: climate.set_temperature
+                target:
+                  entity_id: "{{ climate_entity }}"
+                data:
+                  temperature: "{{ setpoint | float }}"
+      - conditions:
+          - condition: template
+            value_template: "{{ target == 'off' and mode_now == 'heat' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: "{{ climate_entity }}"
+            data:
+              hvac_mode: "off"
+
+mode: queued
+max: 10
