@@ -231,15 +231,39 @@ but it uses only standard climate actions. Other heating such as Nest / CV is ne
 
 ### App-free presence with OpenWrt
 
-1. Add the **OpenWrt (LuCI)** integration for the router. It creates a device tracker
-   per Wi-Fi client.
-2. Give each phone a **fixed MAC address** on the home Wi-Fi. A fixed private address
-   is fine; a rotating one breaks tracking.
-3. Assign each phone's tracker to its owner's **person** entity and select the people in
-   the blueprint. Set up tracking with both occupants' consent.
+The blueprint only reads **person** entities; the router feeds them through Home
+Assistant's legacy `luci` device tracker, which is configured in YAML, not the UI.
 
-Phone-based presence is imperfect: a phone left at home or off Wi-Fi gives the wrong
-result.
+1. On the router, install the RPC module: `opkg install luci-mod-rpc`. A dedicated
+   read-only user is recommended.
+2. Add the tracker to `configuration.yaml` and restart Home Assistant:
+   ```yaml
+   device_tracker:
+     - platform: luci
+       host: 192.168.1.1
+       username: !secret luci_user
+       password: !secret luci_password
+       consider_home: 180
+       interval_seconds: 30
+       new_device_defaults:
+         track_new_devices: false
+   ```
+3. Give each phone a **fixed MAC address** on the home Wi-Fi. A fixed private address
+   is fine; a rotating one breaks tracking.
+4. Enable the phones in `known_devices.yaml` (`track: true`), assign each tracker to its
+   owner's **person** entity and select the people in the blueprint. Set up tracking
+   with both occupants' consent.
+
+**Non-OpenWrt access points.** LuCI only sees clients on the router's own Wi-Fi or in
+its ARP table. If the router does DHCP/routing for the access points, phones are seen
+via ARP, but departures are detected late because ARP entries go stale. If the access
+points do their own NAT, phones are invisible to the router and this setup won't work.
+
+**Delays stack.** Leaving takes `consider_home` plus the blueprint's departure grace
+period (180 s + 10 min by default). Shorten one of them to compensate.
+
+Phone-based presence is imperfect: a phone left at home, asleep or off Wi-Fi gives the
+wrong result.
 
 ### Install (one-click import)
 
