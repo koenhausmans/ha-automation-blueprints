@@ -1,6 +1,6 @@
 # Washing machine done — repeating, acknowledgeable notification (HA automation blueprint)
 # Copyright (c) 2026 Koen Hausmans — MIT License
-# Source: https://github.com/koenhausmans/ha-smart-lighting-blueprints
+# Source: https://github.com/koenhausmans/ha-automation-blueprints
 blueprint:
   name: Appliance done – repeating notification until acknowledged
   description: >
@@ -19,7 +19,7 @@ blueprint:
     Companion-app notify service. Set the running threshold comfortably above the
     idle threshold.
   domain: automation
-  source_url: https://github.com/koenhausmans/ha-smart-lighting-blueprints/blob/master/washing_machine_done_notifier.yaml
+  source_url: https://github.com/koenhausmans/ha-automation-blueprints/blob/master/washing_machine_done_notifier.yaml
   input:
     power_sensor:
       name: Power sensor

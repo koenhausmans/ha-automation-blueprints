@@ -1,6 +1,6 @@
 # Switch Light + Scenes — Home Assistant automation blueprint
 # Copyright (c) 2026 Koen Hausmans — MIT License
-# Source: https://github.com/koenhausmans/ha-smart-lighting-blueprints
+# Source: https://github.com/koenhausmans/ha-automation-blueprints
 blueprint:
   name: Switch Light – Shelly / Hue button, sun-based brightness, scene cycling
   description: >
@@ -16,7 +16,7 @@ blueprint:
     thresholds for morning vs evening and an optional auto-scale of the high
     threshold to today's peak sun.
   domain: automation
-  source_url: https://github.com/koenhausmans/ha-smart-lighting-blueprints/blob/master/switch_light_scenes.yaml
+  source_url: https://github.com/koenhausmans/ha-automation-blueprints/blob/master/switch_light_scenes.yaml
   input:
     shelly_device:
       name: Shelly button device (optional)

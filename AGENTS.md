@@ -196,9 +196,10 @@ reintroduces a real failure.
 - Distribution: native blueprint import via the `my.home-assistant.io` badges in the
   README. Keep each file path stable — HA keys imported blueprints by `source_url`, so
   renaming a file or the repo creates a duplicate instead of an update. The repo was
-  renamed from `ha-motion-light-multisensor` to `ha-smart-lighting-blueprints`; that
-  rename already reset the `source_url` for existing motion-blueprint users (a one-time
-  re-import). Avoid further renames.
+  renamed from `ha-motion-light-multisensor` to `ha-smart-lighting-blueprints`, then to
+  `ha-automation-blueprints`. Imports from either previous URL need a one-time
+  re-import and existing automations must be pointed at the new copy before removing
+  the old one. Avoid further renames.
 - Versioning: GitHub **release tags** only (`vMAJOR.MINOR.PATCH`). There is no version
   field inside the YAML. Cut a release for each user-facing change.
 - Keep `README.md` input descriptions in sync with each blueprint's `input:` block.
