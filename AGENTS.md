@@ -9,10 +9,10 @@ step, and no test framework — the deliverable is the YAML files plus their REA
 lighting blueprints share one sun-elevation–based brightness engine; the notifier is
 standalone.
 
-- `motion_light_multisensor.yaml` — multi-sensor motion lighting.
-- `switch_light_scenes.yaml` — button/switch-driven lighting (Shelly + Hue/Z2M) with
+- `blueprints/lighting/motion_light_multisensor.yaml` — multi-sensor motion lighting.
+- `blueprints/lighting/switch_light_scenes.yaml` — button/switch-driven lighting (Shelly + Hue/Z2M) with
   scene cycling.
-- `washing_machine_done_notifier.yaml` — repeating, acknowledgeable "appliance done"
+- `blueprints/appliances/washing_machine_done_notifier.yaml` — repeating, acknowledgeable "appliance done"
   notification driven by a power sensor (no sun engine).
 
 ## Repository structure
@@ -21,10 +21,16 @@ standalone.
 .
 ├── AGENTS.md
 ├── README.md
-├── motion_light_multisensor.yaml      # Blueprint 1 – motion-driven
-├── switch_light_scenes.yaml           # Blueprint 2 – button/switch-driven
-└── washing_machine_done_notifier.yaml # Blueprint 3 – appliance-done notifier
+└── blueprints/
+    ├── lighting/
+    │   ├── motion_light_multisensor.yaml
+    │   └── switch_light_scenes.yaml
+    └── appliances/
+        └── washing_machine_done_notifier.yaml
 ```
+
+Group blueprints by purpose under `blueprints/`, without an `automation/` level.
+Add `blueprints/climate/` when the planned airco blueprint is implemented.
 
 Do not add `hacs.json` or a `custom_components/` tree unless the task is explicitly
 to wrap this blueprint in a custom integration. HACS has **no blueprint category**,
@@ -59,7 +65,7 @@ There is no CI. Before committing an edit to the blueprint:
    ```bash
    python3 -c "import yaml; \
    yaml.SafeLoader.add_multi_constructor('!', lambda l,s,n: None); \
-   yaml.load(open('motion_light_multisensor.yaml'), Loader=yaml.SafeLoader); \
+   yaml.load(open('blueprints/lighting/motion_light_multisensor.yaml'), Loader=yaml.SafeLoader); \
    print('ok')"
    ```
 2. **Template check.** Paste the `target_brightness` (and `tick_targets`) Jinja into
@@ -197,9 +203,10 @@ reintroduces a real failure.
   README. Keep each file path stable — HA keys imported blueprints by `source_url`, so
   renaming a file or the repo creates a duplicate instead of an update. The repo was
   renamed from `ha-motion-light-multisensor` to `ha-smart-lighting-blueprints`, then to
-  `ha-automation-blueprints`. Imports from either previous URL need a one-time
-  re-import and existing automations must be pointed at the new copy before removing
-  the old one. Avoid further renames.
+  `ha-automation-blueprints`. Blueprint files then moved from the repository root into
+  purpose-based folders under `blueprints/`. Imports from either previous repository
+  URL or a former root-level path need a one-time re-import and existing automations
+  must be pointed at the new copy before removing the old one. Keep these new paths stable.
 - Versioning: GitHub **release tags** only (`vMAJOR.MINOR.PATCH`). There is no version
   field inside the YAML. Cut a release for each user-facing change.
 - Keep `README.md` input descriptions in sync with each blueprint's `input:` block.

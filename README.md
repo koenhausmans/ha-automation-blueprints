@@ -21,10 +21,17 @@ optional auto-scaling to today's peak sun); the third is a standalone appliance 
 ├── AGENTS.md                        # guidance for AI agents
 ├── LICENSE
 ├── README.md
-├── motion_light_multisensor.yaml      # Blueprint 1 – motion-driven
-├── switch_light_scenes.yaml           # Blueprint 2 – button/switch-driven
-└── washing_machine_done_notifier.yaml # Blueprint 3 – appliance-done notifier
+└── blueprints/
+    ├── lighting/
+    │   ├── motion_light_multisensor.yaml
+    │   └── switch_light_scenes.yaml
+    └── appliances/
+        └── washing_machine_done_notifier.yaml
 ```
+
+Blueprints are grouped by purpose, not by trigger: motion and switch control both
+belong under lighting. All current blueprints are automations, so there is no separate
+`automation/` level. Future airco control will go under `blueprints/climate/` when added.
 
 The repository lives at
 [github.com/koenhausmans/ha-automation-blueprints](https://github.com/koenhausmans/ha-automation-blueprints).
@@ -41,13 +48,13 @@ re-triggers leave lights you haven't manually changed alone.
 
 ### Install (one-click import)
 
-[![Open your Home Assistant instance and show the blueprint import dialog.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fmotion_light_multisensor.yaml)
+[![Open your Home Assistant instance and show the blueprint import dialog.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Flighting%2Fmotion_light_multisensor.yaml)
 
 Or manually: **Settings → Automations & Scenes → Blueprints → Import Blueprint**, and
 paste this raw URL:
 
 ```
-https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/motion_light_multisensor.yaml
+https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/lighting/motion_light_multisensor.yaml
 ```
 
 ### Requirements
@@ -100,12 +107,12 @@ Whenever the lights are turned **off** (Shelly toggle-off or Hue `off_press`), t
 
 ### Install (one-click import)
 
-[![Open your Home Assistant instance and show the blueprint import dialog.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fswitch_light_scenes.yaml)
+[![Open your Home Assistant instance and show the blueprint import dialog.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Flighting%2Fswitch_light_scenes.yaml)
 
 Or manually paste this raw URL into the Import Blueprint dialog:
 
 ```
-https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/switch_light_scenes.yaml
+https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/lighting/switch_light_scenes.yaml
 ```
 
 ### Requirements
@@ -158,12 +165,12 @@ cancelled and re-armed automatically (`mode: restart`).
 
 ### Install (one-click import)
 
-[![Open your Home Assistant instance and show the blueprint import dialog.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fwashing_machine_done_notifier.yaml)
+[![Open your Home Assistant instance and show the blueprint import dialog.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Fappliances%2Fwashing_machine_done_notifier.yaml)
 
 Or manually paste this raw URL into the Import Blueprint dialog:
 
 ```
-https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/washing_machine_done_notifier.yaml
+https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/appliances/washing_machine_done_notifier.yaml
 ```
 
 ### Requirements
@@ -248,11 +255,13 @@ that carries a `source_url` in its metadata, which Home Assistant records for yo
 import a blueprint from a raw URL above. Detected updates show up as native `update`
 entities.
 
-> **Note on the repo rename:** Home Assistant keys an imported blueprint by its
+> **Migration from previous URLs:** Home Assistant keys an imported blueprint by its
 > `source_url`. The repository is now `ha-automation-blueprints`, previously
 > `ha-smart-lighting-blueprints` and originally `ha-motion-light-multisensor`.
-> If you imported a blueprint from either previous repository URL, re-importing from
-> the current URL is treated as a *new* blueprint, not an update. Re-import each
+> Blueprints have also moved from the repository root into `blueprints/lighting/`
+> and `blueprints/appliances/`. If you imported from either previous repository URL
+> or a root-level file in the current repository, importing from the links above is
+> treated as a *new* blueprint, not an update. Re-import each
 > affected blueprint once, point existing automations at the new copy, then remove
 > the old copy.
 

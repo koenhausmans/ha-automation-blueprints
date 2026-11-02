@@ -15,7 +15,7 @@ blueprint:
     that are already on, and (with the optional helper) both timer refreshes
     and motion re-triggers leave lights you've manually changed alone.
   domain: automation
-  source_url: https://github.com/koenhausmans/ha-automation-blueprints/blob/master/motion_light_multisensor.yaml
+  source_url: https://github.com/koenhausmans/ha-automation-blueprints/blob/master/blueprints/lighting/motion_light_multisensor.yaml
   input:
     motion_sensors:
       name: Motion sensors
