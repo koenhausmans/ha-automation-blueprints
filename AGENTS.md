@@ -15,7 +15,7 @@ airco heating schedule are standalone.
 - `blueprints/appliances/washing_machine_done_notifier.yaml` — repeating, acknowledgeable "appliance done"
   notification driven by a power sensor (no sun engine).
 - `blueprints/climate/airco_heating_schedule.yaml` — weekly airco comfort heating from a
-  Schedule helper, with optional presence-based extra heating.
+  Schedule helper, with start thresholds and presence-only / presence-extended blocks.
 
 ## Repository structure
 
@@ -196,19 +196,31 @@ reintroduces a real failure.
   resumes the previous mode instead of selecting heat. Stop with `set_hvac_mode: off`.
 - **Never touch non-heating modes.** If the airco is not `heat` or `off`, the automation
   does nothing. Pause / season-off only switch the airco off when it is in `heat`.
-- **The schedule always wins; presence only adds heating.** Scheduled blocks heat
+- **Presence only extends; it never starts heating outside a block.** Outside a block,
+  the target is `heat` only when the airco is *already* heating, someone is home and it
+  is inside the window; otherwise `off`. Inside a block, `presence_only: true` blocks
+  heat only while someone is home (so `arrive` must stay a trigger); other blocks heat
   regardless of occupancy. Unknown/unavailable people never count as home.
-- **The setpoint is written only on a transition or when heating starts**
-  (`schedule_transition` or mode was not `heat`). This is what lets a manual adjustment
-  last until the next block. A schedule trigger is a transition only when on/off or the
-  `profile` attribute changed; adjoining blocks keep the schedule `on`.
-- **Setpoint precedence:** block `temperature` attribute → profile `input_number` helper
-  → blueprint input (presence: helper → input). Invalid values fall through. A change
-  in block `temperature` also counts as a transition. Helper changes are not triggers
-  on purpose: that would override manual adjustments.
-- **Manual off during a block is a known, deliberate gap.** It lasts only until the next
-  trigger (arrival, window time, restart, pause off, season on). Don't "fix" it without
-  agreement; the intended fix is to start heating only on start events.
+- **The start threshold only gates starting.** A block starts heating only while
+  `room_temp_sensor` is below the block `threshold` → profile threshold input. Once the
+  airco is `heat`, it keeps heating regardless of the threshold (also into an adjoining
+  block). An unavailable or unset sensor counts as cold. The `room_cold` template trigger
+  fires when the room drops below the active block's threshold; it duplicates the
+  threshold lookup because trigger templates can't use `variables:`.
+- **Manual off lasts until the block ends.** `manual_off` = airco `off` with a
+  `last_changed` later than the schedule's `last_changed`; such a block does not start
+  heating again. Adjoining blocks share one schedule `on` period, so a manual off spans
+  them. `pause_off`, `season_on` and `start` ignore it on purpose (restarts reset
+  `last_changed`).
+- **The setpoint is written only inside a block, on a transition or when heating
+  starts** (`schedule_transition` or mode was not `heat`). This is what lets a manual
+  adjustment last until the next block, and what keeps the block's setpoint while
+  presence extends heating after the block. A schedule trigger is a transition only when
+  on/off or the `profile`, `temperature`, `threshold` or `presence_only` attribute
+  changed; adjoining blocks keep the schedule `on`.
+- **Setpoint / threshold precedence:** block `temperature` / `threshold` attribute →
+  profile blueprint input (morning, daytime, evening). There are no setpoint helpers and
+  no separate presence setpoint; don't add them back without agreement.
 - **The departure grace lives in the `leave` trigger's `for:`** and is mirrored in
   `someone_home` (left less than `grace_s` ago still counts as home), so other triggers
   don't cut presence heating early.

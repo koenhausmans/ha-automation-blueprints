@@ -10,7 +10,7 @@ schedule are standalone.
 | [Motion Light (multi-sensor)](blueprints/lighting/motion_light_multisensor.yaml) | Motion-activated lights for multiple sensors per room, with a cancellable off-delay, periodic brightness refresh while occupied, and optional manual-override protection | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Flighting%2Fmotion_light_multisensor.yaml) [raw](https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/lighting/motion_light_multisensor.yaml) |
 | [Switch Light + Scenes](blueprints/lighting/switch_light_scenes.yaml) | Lights driven by a Shelly button or Hue / Zigbee2MQTT dimmer: single press toggles, double / triple press cycle scenes, Hue up / down step brightness | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Flighting%2Fswitch_light_scenes.yaml) [raw](https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/lighting/switch_light_scenes.yaml) |
 | [Appliance done notifier](blueprints/appliances/washing_machine_done_notifier.yaml) | Repeating, acknowledgeable notification when a washing machine, dishwasher or dryer finishes, based on a power sensor | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Fappliances%2Fwashing_machine_done_notifier.yaml) [raw](https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/appliances/washing_machine_done_notifier.yaml) |
-| [Airco heating schedule](blueprints/climate/airco_heating_schedule.yaml) | Weekly comfort heating with an airco from a Schedule helper, with optional presence-based extra heating | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Fclimate%2Fairco_heating_schedule.yaml) [raw](https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/climate/airco_heating_schedule.yaml) |
+| [Airco heating schedule](blueprints/climate/airco_heating_schedule.yaml) | Weekly comfort heating with an airco from a Schedule helper, with start thresholds and presence-only or presence-extended blocks | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fkoenhausmans%2Fha-automation-blueprints%2Fmaster%2Fblueprints%2Fclimate%2Fairco_heating_schedule.yaml) [raw](https://raw.githubusercontent.com/koenhausmans/ha-automation-blueprints/master/blueprints/climate/airco_heating_schedule.yaml) |
 
 Click a badge for one-click import. To import manually, go to **Settings → Automations &
 Scenes → Blueprints → Import Blueprint** and paste the **raw** URL.
@@ -167,69 +167,89 @@ but it uses only standard climate actions. Other heating such as Nest / CV is ne
 
 | Situation | Airco action |
 |---|---|
-| Scheduled block active | Heat at the block's setpoint, whether or not anyone is home |
-| No block, someone home, inside the presence window | Heat at the presence setpoint |
-| No block, everyone away beyond the grace period | Off |
-| No block, no presence configured | Off |
+| Block starts, room below the block's threshold | Heat at the block's setpoint, whether or not anyone is home |
+| Block starts, room at/above the threshold | Nothing; heating starts once the room drops below it |
+| `presence_only` block, someone home | As above, also when someone arrives during the block |
+| `presence_only` block, everyone away beyond the grace period | Off |
+| Airco turned off by hand during a block | Stays off until the block ends |
+| Block ends while heating, someone home, inside the presence window | Keeps heating at the block's setpoint |
+| No block, everyone away beyond the grace period, or outside the window | Off |
+| No block, airco off | Left off; presence never starts heating outside a block |
 | Airco in cool / dry / fan / auto mode | Left alone |
 | Pause on, or heating season off | Heating switched off, automation suspended |
 | Home Assistant restart | Current schedule and presence re-evaluated |
 
-- **Profiles.** Every schedule block needs additional data `profile: morning`,
-  `profile: daytime` or `profile: evening`. Morning and daytime blocks use the morning
-  setpoint; evening blocks use the evening setpoint. Adjoining blocks (e.g. Friday
-  morning → daytime → evening) keep heating on and change the setpoint at each boundary.
-  A block with an unknown profile is skipped and logged in the logbook.
-- **Setpoints.** A block can set its own `temperature: 21` in its additional data. Without
-  it, the profile setpoint is used: from the optional `input_number` helper if set, else
-  the blueprint value. The presence setpoint works the same way (helper, else blueprint
-  value). Changed setpoints apply at the next transition, not immediately.
+- **Block data.** Every schedule block needs additional data `profile: morning`,
+  `profile: daytime` or `profile: evening`; the profile selects the setpoint and start
+  threshold. Optional keys: `temperature: 21` (own setpoint), `threshold: 18` (own start
+  threshold) and `presence_only: true` (only heat while someone is home). A block with an
+  unknown profile is skipped and logged in the logbook.
+- **Start threshold.** A block only *starts* heating while the room temperature sensor is
+  below its threshold (30 °C = always start). Once heating, the airco's own thermostat
+  regulates until the block ends, also into an adjoining block. Without a sensor, or while
+  it is unavailable, blocks always start.
 - **Manual changes.** A temperature you set by hand lasts until the next schedule
-  transition. The automation does not keep correcting it.
-- **Manual off.** Outside a block, turning the airco off by hand sticks. During a block,
-  it lasts only until the next trigger (someone arriving, the presence window time, a
-  restart, pause off or season on), which turns heating back on. This is a deliberate
-  choice for now and may be reconsidered.
-- **Presence only adds heating.** Unknown or unavailable people never count as home.
-  The grace period tolerates short Wi-Fi dropouts. Subtract any "consider home" delay
-  already set on the trackers so the delays don't stack.
+  transition. Turning the airco off by hand during a block lasts until the block ends
+  (adjoining blocks count as one). A restart, pause off or season on forgets it and
+  re-applies the schedule.
+- **Presence only extends.** Outside a block, presence keeps heating running that a block
+  started; it never starts heating. Unknown or unavailable people never count as home. The
+  grace period tolerates short Wi-Fi dropouts.
 - **Commands.** Heating starts with `climate.set_hvac_mode: heat` followed by a separate
   `climate.set_temperature`, and stops with `set_hvac_mode: off`. Writes are skipped when
   the airco already has the target mode and setpoint. A failed cloud command is not
   retried; the next trigger re-applies the state.
 
+### Example schedule
+
+The schedule this blueprint is used with, with the room threshold read from a Nest
+thermostat's temperature sensor:
+
+| Day | Blocks |
+|---|---|
+| Monday | 06:30–08:30 morning · 18:00–22:30 evening |
+| Tuesday | 07:00–08:00 morning |
+| Wednesday | 18:00–22:30 evening |
+| Thursday | 06:30–08:30 morning · 18:00–22:30 evening |
+| Friday | 07:00–08:30 morning · 08:30–17:00 daytime, presence only |
+| Saturday | 09:00–17:00 daytime, presence only |
+| Sunday | 09:00–18:00 daytime, presence only · 18:00–22:30 evening |
+
+| Profile | Setpoint | Start below | Block data |
+|---|---|---|---|
+| morning | 16.5 °C | 17 °C | `profile: morning` |
+| daytime | 17 °C | 18 °C | `profile: daytime` + `presence_only: true` |
+| evening | 19 °C | always (30 °C) | `profile: evening` |
+
+The setpoints look low because the airco measures near the ceiling unit: it heats the room
+past its own setpoint. The threshold uses the Nest sensor, which reflects the room.
+
 ### App-free presence with OpenWrt
 
 The blueprint only reads **person** entities; the router feeds them through Home
-Assistant's legacy `luci` device tracker, which is configured in YAML, not the UI.
+Assistant's **OpenWrt (luci)** integration.
 
-1. On the router, install the RPC module: `opkg install luci-mod-rpc`. A dedicated
-   read-only user is recommended.
-2. Add the tracker to `configuration.yaml` and restart Home Assistant:
-   ```yaml
-   device_tracker:
-     - platform: luci
-       host: 192.168.1.1
-       username: !secret luci_user
-       password: !secret luci_password
-       consider_home: 180
-       interval_seconds: 30
-       new_device_defaults:
-         track_new_devices: false
+1. On the router (OpenWrt 24.10 and older use `opkg`; newer releases use `apk add`):
+   ```sh
+   opkg update && opkg install luci-mod-rpc && /etc/init.d/uhttpd restart
    ```
+2. **Settings → Devices & Services → Add Integration → OpenWrt (luci)**. Enter the router
+   address and the `root` account (the RPC module only accepts root). Turn **SSL** off if
+   LuCI is only served over HTTP. Each connected device gets a `device_tracker` entity;
+   the router is polled every 30 seconds.
 3. Give each phone a **fixed MAC address** on the home Wi-Fi. A fixed private address
    is fine; a rotating one breaks tracking.
-4. Enable the phones in `known_devices.yaml` (`track: true`), assign each tracker to its
-   owner's **person** entity and select the people in the blueprint. Set up tracking
-   with both occupants' consent.
+4. Assign each phone's tracker to its owner's **person** entity (next to the Companion
+   app's GPS tracker, if any) and select the people in the blueprint. Set up tracking
+   with all occupants' consent.
 
 **Non-OpenWrt access points.** LuCI only sees clients on the router's own Wi-Fi or in
 its ARP table. If the router does DHCP/routing for the access points, phones are seen
 via ARP, but departures are detected late because ARP entries go stale. If the access
 points do their own NAT, phones are invisible to the router and this setup won't work.
 
-**Delays stack.** Leaving takes `consider_home` plus the blueprint's departure grace
-period (180 s + 10 min by default). Shorten one of them to compensate.
+**Dropouts.** The integration marks a device away at the first poll it is missing; the
+blueprint's departure grace period (10 min by default) absorbs short Wi-Fi dropouts.
 
 Phone-based presence is imperfect: a phone left at home, asleep or off Wi-Fi gives the
 wrong result.
@@ -239,10 +259,11 @@ wrong result.
 - An airco `climate.*` entity that supports the `heat` and `off` modes.
 - A **Schedule** helper (Settings → Devices & Services → Helpers → Schedule) with a
   `profile` in each block's additional data.
-- *(Optional)* **person** entities with router-based trackers, for presence heating.
+- *(Optional)* an indoor temperature **sensor**, for the start thresholds.
+- *(Optional)* **person** entities with router-based trackers, for `presence_only` blocks
+  and extending heating after a block.
 - *(Optional)* an **`input_boolean`** pause toggle and an **`input_boolean`**
   heating-season toggle.
-- *(Optional)* **`input_number`** helpers for the morning, evening and presence setpoints.
 
 ---
 
