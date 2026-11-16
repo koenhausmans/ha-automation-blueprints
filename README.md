@@ -208,7 +208,7 @@ thermostat's temperature sensor:
 | Day | Blocks |
 |---|---|
 | Monday | 06:30–08:30 morning · 18:00–22:30 evening |
-| Tuesday | 07:00–08:00 morning |
+| Tuesday | 06:45–08:00 morning |
 | Wednesday | 18:00–22:30 evening |
 | Thursday | 06:30–08:30 morning · 18:00–22:30 evening |
 | Friday | 07:00–08:30 morning · 08:30–17:00 daytime, presence only |
